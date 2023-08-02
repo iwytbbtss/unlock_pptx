@@ -38,6 +38,7 @@ dependencies:
   file_picker: ^5.3.0
   xml: ^6.3.0
   archive: ^3.3.7
+  desktop_drop: ^0.4.1
 
 dev_dependencies:
   flutter_test:

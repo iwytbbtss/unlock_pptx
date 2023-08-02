@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
@@ -31,12 +32,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'UNLOCK-PPTX',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'PPTX UNLOCK'),
+      home: const MyHomePage(title: 'UNLOCK PPTX'),
     );
   }
 }
@@ -51,6 +52,29 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  // 드래그 중인지
+  bool isDragging = false;
+
+  bool _convertXmlToEdit(String path) {
+    try {
+      File file = File(path);
+      // inspect(file);
+      final document = XmlDocument.parse(file.readAsStringSync());
+      final el = document.findAllElements('p:modifyVerifier');
+      // inspect(document);
+
+      for (var element in el) {
+        element.remove();
+      }
+      // print(document.toXmlString());
+      file.writeAsStringSync(document.toXmlString());
+
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   void _isolateDecodeUtf(SendPort port) {
     final ReceivePort res = ReceivePort();
     port.send(res.sendPort);
@@ -68,20 +92,14 @@ class _MyHomePageState extends State<MyHomePage> {
       final path = result.files.single.path!;
       // 형식이 맞을 때
       if (path.endsWith('presentation.xml')) {
-        File file = File(result.files.single.path!);
-        // inspect(file);
-        final document = XmlDocument.parse(file.readAsStringSync());
-        final el = document.findAllElements('p:modifyVerifier');
-        // inspect(document);
+        final result = _convertXmlToEdit(path);
 
-        for (var element in el) {
-          element.remove();
+        if (result) {
+          // 완료
+          _openDialog('완료', '닫기');
+        } else {
+          _openDialog('저장에 실패했습니다', '닫기');
         }
-        // print(document.toXmlString());
-        file.writeAsStringSync(document.toXmlString());
-
-        // 완료
-        _openDialog('완료', '닫기');
       }
       // 형식이 안 맞을 때
       else {
@@ -192,8 +210,77 @@ class _MyHomePageState extends State<MyHomePage> {
             ElevatedButton(
                 onPressed: _pickXmlFile,
                 child: const Text(
-                  'presentaiton.xml 파일 선택',
-                ))
+                  'presentation.xml 파일 선택',
+                )),
+            DropTarget(
+                onDragDone: (details) {
+                  if (details.files.isNotEmpty) {
+                    final path = details.files.first.path;
+                    // 형식이 맞을 때
+                    if (path.endsWith('presentation.xml')) {
+                      final result = _convertXmlToEdit(path);
+                      if (result) {
+                        // 완료
+                        _openDialog('완료', '닫기');
+                      } else {
+                        _openDialog('저장에 실패했습니다', '닫기');
+                      }
+                    }
+                    // 형식이 안 맞을 때
+                    else {
+                      _openDialog('잘못된 파일 입니다', '닫기');
+                    }
+                  }
+                },
+                onDragEntered: (details) {
+                  setState(() {
+                    isDragging = true;
+                  });
+                },
+                onDragExited: (details) {
+                  setState(() {
+                    isDragging = false;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 30),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                        border: Border.all(
+                            color: isDragging ? Colors.deepPurple : Colors.grey,
+                            width: 3),
+                        borderRadius: BorderRadius.circular(20)),
+                    child: RichText(
+                      text: TextSpan(children: [
+                        TextSpan(
+                          text: 'Drag&Drop ',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: isDragging ? Colors.deepPurple : Colors.grey,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '\'presentation.xml\'',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDragging ? Colors.deepPurple : Colors.grey,
+                          ),
+                        )
+                      ]),
+                    ),
+                    // child: Text(
+                    //   'Drag&Drop \'presentation.xml\'',
+                    //   style: TextStyle(
+                    //     fontSize: 18,
+                    //     color: isDragging ? Colors.deepPurple : Colors.grey,
+                    //   ),
+                    // ),
+                  ),
+                )),
           ],
         ),
       ),
