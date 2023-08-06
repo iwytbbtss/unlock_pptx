@@ -151,6 +151,9 @@ class _HomeState extends State<Home> {
         final archive = ZipDecoder().decodeBytes(newBytes);
         for (var file in archive) {
           print(file.name);
+          if (file.name == 'ppt/presentation.xml') {
+            print(file.content);
+          }
         }
         // final presentation = archive.files.firstWhereOrNull((element) => element.name == 'ppt/presentation.xml');
         // if (presentation != null) {
