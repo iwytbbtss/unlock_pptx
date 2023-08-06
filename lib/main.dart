@@ -23,11 +23,11 @@ extension IterableX<T> on Iterable<T> {
 }
 
 void main() {
-  runApp(const MyApp());
+  runApp(const App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class App extends StatelessWidget {
+  const App({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -37,24 +37,41 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'UNLOCK PPTX'),
+      home: const Home(title: 'UNLOCK PPTX'),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class Home extends StatefulWidget {
+  const Home({super.key, required this.title});
 
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<Home> createState() => _HomeState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _HomeState extends State<Home> {
   // 드래그 중인지
   bool isDragging = false;
 
+  void _openDialog(String title, String buttonText) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        alignment: Alignment.center,
+        title: Text(
+          title,
+          textAlign: TextAlign.center,
+        ),
+        titlePadding: const EdgeInsets.all(30),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [ElevatedButton(onPressed: () => Navigator.of(context).pop(), child: Text(buttonText))],
+      ),
+    );
+  }
+
+  // xml 수정 가능하게 편집
   bool _convertXmlToEdit(String path) {
     try {
       File file = File(path);
@@ -75,16 +92,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  void _isolateDecodeUtf(SendPort port) {
-    final ReceivePort res = ReceivePort();
-    port.send(res.sendPort);
-    res.listen((message) {
-      final SendPort send = message[0] as SendPort;
-      final List<int> data = message[1] as List<int>;
-      send.send(utf8.decode(data));
-    });
-  }
-
+  // xml 파일 선택
   void _pickXmlFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
 
@@ -110,6 +118,16 @@ class _MyHomePageState extends State<MyHomePage> {
     else {}
   }
 
+  void _isolateDecodeUtf(SendPort port) {
+    final ReceivePort res = ReceivePort();
+    port.send(res.sendPort);
+    res.listen((message) {
+      final SendPort send = message[0] as SendPort;
+      final List<int> data = message[1] as List<int>;
+      send.send(utf8.decode(data));
+    });
+  }
+
   void _pickPptxFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
 
@@ -118,74 +136,59 @@ class _MyHomePageState extends State<MyHomePage> {
       // 형식이 맞을 때
       if (path.endsWith('pptx')) {
         File file = File(result.files.single.path!);
-        var temp = path.split('.');
+        final temp = path.split('.');
+        temp[temp.length - 2] += '-1';
         temp.last = 'zip';
         String newPath = temp.join('.');
+        final slash = newPath.split('/');
         print('newPath: $newPath');
-        file = file.renameSync(newPath);
+        print('slash: $slash');
+        File newFile = File(newPath);
         final bytes = await file.readAsBytes();
+        newFile.writeAsBytesSync(bytes);
+        // file = file.renameSync(newPath);
+        /* 여기까지 .pptx를 .zip으로 변경 */
+
         final archive = ZipDecoder().decodeBytes(bytes);
-        final presentation = archive.files.firstWhereOrNull(
-            (element) => element.name == 'ppt/presentation.xml');
-        if (presentation != null) {
-          // await Isolate.spawn((message) {
+        // final presentation = archive.files.firstWhereOrNull((element) => element.name == 'ppt/presentation.xml');
+        // if (presentation != null) {
+        // await Isolate.spawn((message) {
 
-          // }, message)
-          final content = utf8.decode(presentation.content as List<int>);
-          final xml = XmlDocument.parse(content);
-          final pModify = xml.findAllElements('p:modifyVerifier');
+        // }, message)
+        // final content = utf8.decode(presentation.content as List<int>);
+        // final xml = XmlDocument.parse(content);
+        // final pModify = xml.findAllElements('p:modifyVerifier');
 
-          for (var el in pModify) {
-            el.remove();
-          }
+        // for (var el in pModify) {
+        //   el.remove();
+        // }
 
-          // final editedArchive = Archive();
-          // for (var file in archive.files) {
-          //   if (file != presentation) {
-          //     editedArchive.addFile(file);
-          //   }
-          // }
+        // final editedArchive = Archive();
+        // for (var file in archive.files) {
+        //   if (file != presentation) {
+        //     editedArchive.addFile(file);
+        //   }
+        // }
 
-          final editedContent = xml.toXmlString();
-          final editedBytes = utf8.encode(editedContent);
+        // final editedContent = xml.toXmlString();
+        // final editedBytes = utf8.encode(editedContent);
 
-          final editedPresentation = ArchiveFile(
-              'ppt/presentation.xml', editedBytes.length, editedBytes);
+        // final editedPresentation = ArchiveFile('ppt/presentation.xml', editedBytes.length, editedBytes);
 
-          archive.addFile(editedPresentation);
-          final editedArchiveBytes = ZipEncoder().encode(archive);
+        // archive.addFile(editedPresentation);
+        // final editedArchiveBytes = ZipEncoder().encode(archive);
 
-          if (editedArchiveBytes != null) {
-            final editedFile = File(path);
-            await editedFile.writeAsBytes(editedArchiveBytes);
-          }
-        }
+        // if (editedArchiveBytes != null) {
+        //   final editedFile = File(path);
+        //   await editedFile.writeAsBytes(editedArchiveBytes);
+        // }
+        // }
       }
       // 형식이 안 맞을 때
       else {}
     }
     // 취소
     else {}
-  }
-
-  void _openDialog(String title, String buttonText) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        alignment: Alignment.center,
-        title: Text(
-          title,
-          textAlign: TextAlign.center,
-        ),
-        titlePadding: const EdgeInsets.all(30),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(buttonText))
-        ],
-      ),
-    );
   }
 
   @override
@@ -249,9 +252,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     padding: const EdgeInsets.symmetric(vertical: 30),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                        border: Border.all(
-                            color: isDragging ? Colors.deepPurple : Colors.grey,
-                            width: 3),
+                        border: Border.all(color: isDragging ? Colors.deepPurple : Colors.grey, width: 3),
                         borderRadius: BorderRadius.circular(20)),
                     child: RichText(
                       text: TextSpan(children: [
