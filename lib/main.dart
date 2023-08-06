@@ -215,6 +215,11 @@ class _HomeState extends State<Home> {
                 child: const Text(
                   'presentation.xml 파일 선택',
                 )),
+            ElevatedButton(
+                onPressed: _pickPptxFile,
+                child: const Text(
+                  'pptx 파일 선택',
+                )),
             DropTarget(
                 onDragDone: (details) {
                   if (details.files.isNotEmpty) {
