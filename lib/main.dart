@@ -152,7 +152,8 @@ class _HomeState extends State<Home> {
         for (var file in archive) {
           print(file.name);
           if (file.name == 'ppt/presentation.xml') {
-            print(file.content);
+            print(file.content.runtimeType);
+
           }
         }
         // final presentation = archive.files.firstWhereOrNull((element) => element.name == 'ppt/presentation.xml');
