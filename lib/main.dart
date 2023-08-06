@@ -144,13 +144,23 @@ class _HomeState extends State<Home> {
         final slash = newPath.split('\\');
         print('newPath: $newPath');
         print('slash: $slash');
-        File newFile = File(newPath);
+        slash.removeLast();
+        final String directory = slash.join('\\');
+        print('directory $directory');
         final bytes = await file.readAsBytes();
-        newFile.writeAsBytesSync(bytes);
+        // File newFile = File(newPath);
+        // newFile.writeAsBytesSync(bytes);
         // file = file.renameSync(newPath);
         /* 여기까지 .pptx를 .zip으로 변경 */
 
         final archive = ZipDecoder().decodeBytes(bytes);
+        for (var file in archive) {
+          final filePath = '$directory${file.name}';
+
+          File newFile = File(filePath);
+          newFile.createSync(recursive: true);
+          newFile.writeAsBytesSync(file.content);
+        }
         // final presentation = archive.files.firstWhereOrNull((element) => element.name == 'ppt/presentation.xml');
         // if (presentation != null) {
         // await Isolate.spawn((message) {
