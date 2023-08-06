@@ -138,28 +138,19 @@ class _HomeState extends State<Home> {
         File file = File(result.files.single.path!);
         final temp = path.split('.');
         temp[temp.length - 2] += '-1';
-        // temp.removeLast();
         temp.last = 'zip';
         String newPath = temp.join('.');
-        final slash = newPath.split('\\');
         print('newPath: $newPath');
-        print('slash: $slash');
-        slash.removeLast();
-        final String directory = slash.join('\\');
-        print('directory $directory');
         final bytes = await file.readAsBytes();
-        // File newFile = File(newPath);
-        // newFile.writeAsBytesSync(bytes);
-        // file = file.renameSync(newPath);
+        // -1.zip 생성
+        File newFile = File(newPath);
+        newFile.writeAsBytesSync(bytes);
+        final newBytes = await newFile.readAsBytes();
         /* 여기까지 .pptx를 .zip으로 변경 */
 
-        final archive = ZipDecoder().decodeBytes(bytes);
+        final archive = ZipDecoder().decodeBytes(newBytes);
         for (var file in archive) {
-          final filePath = '$directory${file.name}';
-
-          File newFile = File(filePath);
-          newFile.createSync(recursive: true);
-          newFile.writeAsBytesSync(file.content);
+          print(file.name);
         }
         // final presentation = archive.files.firstWhereOrNull((element) => element.name == 'ppt/presentation.xml');
         // if (presentation != null) {
