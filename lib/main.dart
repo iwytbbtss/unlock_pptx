@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:archive/archive_io.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -118,16 +119,6 @@ class _HomeState extends State<Home> {
     else {}
   }
 
-  void _isolateDecodeUtf(SendPort port) {
-    final ReceivePort res = ReceivePort();
-    port.send(res.sendPort);
-    res.listen((message) {
-      final SendPort send = message[0] as SendPort;
-      final List<int> data = message[1] as List<int>;
-      send.send(utf8.decode(data));
-    });
-  }
-
   void _pickPptxFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles();
 
@@ -149,13 +140,35 @@ class _HomeState extends State<Home> {
         /* 여기까지 .pptx를 .zip으로 변경 */
 
         final archive = ZipDecoder().decodeBytes(newBytes);
+        final editedArchive = Archive();
         for (var file in archive) {
           // print(file.name);
           if (file.name == 'ppt/presentation.xml') {
             String result = utf8.decode(file.content);
             print(result);
+            final document = XmlDocument.parse(result);
+            final el = document.findAllElements('p:modifyVerifier');
+
+            for (var element in el) {
+              element.remove();
+            }
+
+            final xml = document.toXmlString();
+            final xmlBytes = utf8.encode(xml);
+            final newXml = ArchiveFile('ppt/presentation.xml', xmlBytes.length, xmlBytes);
+            editedArchive.addFile(newXml);
+          } else {
+            editedArchive.addFile(file);
           }
         }
+
+        final editedBytes = ZipEncoder().encode(editedArchive);
+        if (editedBytes != null) {
+          newFile.writeAsBytesSync(editedBytes);
+        }
+        temp.last = 'pptx';
+        newPath = temp.join('.');
+        newFile.renameSync(newPath);
         // final presentation = archive.files.firstWhereOrNull((element) => element.name == 'ppt/presentation.xml');
         // if (presentation != null) {
         // await Isolate.spawn((message) {
