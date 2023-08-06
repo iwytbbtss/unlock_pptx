@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -135,12 +136,15 @@ class _HomeState extends State<Home> {
       final path = result.files.single.path!;
       // 형식이 맞을 때
       if (path.endsWith('pptx')) {
+        final directory = Directory.fromUri(Uri.parse(path));
+        print('directory: ${directory.path}');
         File file = File(result.files.single.path!);
         final temp = path.split('.');
         temp[temp.length - 2] += '-1';
+        // temp.removeLast();
         temp.last = 'zip';
         String newPath = temp.join('.');
-        final slash = newPath.split('/');
+        final slash = newPath.split('\\');
         print('newPath: $newPath');
         print('slash: $slash');
         File newFile = File(newPath);
