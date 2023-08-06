@@ -7,6 +7,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:xml/xml.dart';
 
 extension IterableX<T> on Iterable<T> {
@@ -136,7 +137,7 @@ class _HomeState extends State<Home> {
       final path = result.files.single.path!;
       // 형식이 맞을 때
       if (path.endsWith('pptx')) {
-        final directory = Directory.fromUri(Uri.parse(path));
+        final directory = await getApplicationDocumentsDirectory();
         print('directory: ${directory.path}');
         File file = File(result.files.single.path!);
         final temp = path.split('.');
