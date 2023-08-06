@@ -162,6 +162,8 @@ class _HomeState extends State<Home> {
           }
         }
 
+        await inputStream.close();
+
         final editedBytes = ZipEncoder().encode(editedArchive);
         if (editedBytes != null) {
           newFile.writeAsBytesSync(editedBytes);
