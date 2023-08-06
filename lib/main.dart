@@ -136,10 +136,10 @@ class _HomeState extends State<Home> {
         // -1.zip 생성
         File newFile = File(newPath);
         newFile.writeAsBytesSync(bytes);
+        final newBytes = newFile.readAsBytesSync();
         /* 여기까지 .pptx를 .zip으로 변경 */
 
-        final inputStream = InputFileStream(newPath);
-        final archive = ZipDecoder().decodeBuffer(inputStream);
+        final archive = ZipDecoder().decodeBytes(newBytes, verify: true);
         final editedArchive = Archive();
         for (var file in archive) {
           // print(file.name);
@@ -161,8 +161,6 @@ class _HomeState extends State<Home> {
             editedArchive.addFile(file);
           }
         }
-
-        await inputStream.close();
 
         final editedBytes = ZipEncoder().encode(editedArchive);
         if (editedBytes != null) {
