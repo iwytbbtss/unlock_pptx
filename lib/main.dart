@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:archive/archive_io.dart';
 import 'package:desktop_drop/desktop_drop.dart';
@@ -8,20 +7,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
-
-extension IterableX<T> on Iterable<T> {
-  T? firstWhereOrNull(bool Function(T element) test) {
-    if (isEmpty) {
-      return null;
-    }
-
-    for (var el in this) {
-      if (test(el)) return el;
-    }
-
-    return null;
-  }
-}
 
 void main() {
   runApp(const App());
@@ -56,8 +41,8 @@ class _HomeState extends State<Home> {
   // 드래그 중인지
   bool isDragging = false;
 
-  void _openDialog(String title, String buttonText) {
-    showDialog(
+  Future<void> _openDialog(String title, String buttonText) async {
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         alignment: Alignment.center,
@@ -73,41 +58,121 @@ class _HomeState extends State<Home> {
   }
 
   // xml 수정 가능하게 편집
-  bool _convertXmlToEdit(String path) {
+  // bool _convertXmlToEdit(String path) {
+  //   try {
+  //     File file = File(path);
+  //     // inspect(file);
+  //     final document = XmlDocument.parse(file.readAsStringSync());
+  //     final el = document.findAllElements('p:modifyVerifier');
+  //     // inspect(document);
+
+  //     for (var element in el) {
+  //       element.remove();
+  //     }
+  //     // print(document.toXmlString());
+  //     file.writeAsStringSync(document.toXmlString());
+
+  //     return true;
+  //   } catch (e) {
+  //     return false;
+  //   }
+  // }
+
+  // pptx 파일 수정
+  Future<bool> _convertPptxToEdit(String path) async {
     try {
+      // 기존 파일
       File file = File(path);
-      // inspect(file);
-      final document = XmlDocument.parse(file.readAsStringSync());
-      final el = document.findAllElements('p:modifyVerifier');
-      // inspect(document);
+      final bytes = await file.readAsBytes();
+      // -1.zip 파일 생성
+      final temp = path.split('.');
+      temp[temp.length - 2] += '-1';
+      temp.last = 'zip';
+      String newPath = temp.join('.');
+      File newFile = File(newPath);
+      newFile.writeAsBytesSync(bytes);
+      // 작업 시작
+      final newBytes = newFile.readAsBytesSync();
+      final archive = ZipDecoder().decodeBytes(newBytes, verify: true);
+      final editedArchive = Archive(); // 새로 저장할 용도
+      for (var file in archive) {
+        // presentation.xml 찾기
+        if (file.name == 'ppt/presentation.xml') {
+          String result = utf8.decode(file.content);
+          final document = XmlDocument.parse(result);
+          final el = document.findAllElements('p:modifyVerifier');
 
-      for (var element in el) {
-        element.remove();
+          for (var element in el) {
+            element.remove();
+          }
+
+          // 변환 후 추가
+          final xml = document.toXmlString();
+          final xmlBytes = utf8.encode(xml);
+          final newXml = ArchiveFile('ppt/presentation.xml', xmlBytes.length, xmlBytes);
+          editedArchive.addFile(newXml);
+        }
+        // 나머지 파일은 바로 추가
+        else {
+          editedArchive.addFile(file);
+        }
       }
-      // print(document.toXmlString());
-      file.writeAsStringSync(document.toXmlString());
 
+      // -1.pptx로 변환
+      final editedBytes = ZipEncoder().encode(editedArchive);
+      if (editedBytes != null) {
+        newFile.writeAsBytesSync(editedBytes);
+      }
+      temp.last = 'pptx';
+      newPath = temp.join('.');
+      newFile.renameSync(newPath);
+
+      // 저장 성공
       return true;
-    } catch (e) {
+    } catch (error) {
+      await _openDialog('변환 도중 실패: $error', '확인');
       return false;
     }
   }
 
   // xml 파일 선택
-  void _pickXmlFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
+  // void _pickXmlFile() async {
+  //   FilePickerResult? result = await FilePicker.platform.pickFiles();
 
-    if (result != null) {
-      final path = result.files.single.path!;
+  //   if (result != null) {
+  //     final path = result.files.single.path!;
+  //     // 형식이 맞을 때
+  //     if (path.endsWith('presentation.xml')) {
+  //       final result = _convertXmlToEdit(path);
+
+  //       if (result) {
+  //         // 완료
+  //         _openDialog('완료', '닫기');
+  //       } else {
+  //         _openDialog('저장에 실패했습니다', '닫기');
+  //       }
+  //     }
+  //     // 형식이 안 맞을 때
+  //     else {
+  //       _openDialog('잘못된 파일 입니다', '닫기');
+  //     }
+  //   }
+  //   // 취소
+  //   else {}
+  // }
+
+  void _pickPptxFile() async {
+    FilePickerResult? pickedFiles = await FilePicker.platform.pickFiles();
+
+    if (pickedFiles != null) {
+      final path = pickedFiles.files.single.path!;
       // 형식이 맞을 때
-      if (path.endsWith('presentation.xml')) {
-        final result = _convertXmlToEdit(path);
+      if (path.endsWith('pptx')) {
+        final result = await _convertPptxToEdit(path);
 
         if (result) {
           // 완료
           _openDialog('완료', '닫기');
-        } else {
-          _openDialog('저장에 실패했습니다', '닫기');
         }
       }
       // 형식이 안 맞을 때
@@ -115,99 +180,26 @@ class _HomeState extends State<Home> {
         _openDialog('잘못된 파일 입니다', '닫기');
       }
     }
-    // 취소
-    else {}
   }
 
-  void _pickPptxFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
-
-    if (result != null) {
-      final path = result.files.single.path!;
+  // pptx 드래그 앤 드랍
+  void _onDragDropPptxFile(DropDoneDetails details) async {
+    if(details.files.isNotEmpty) {
+      final path = details.files.first.path;
       // 형식이 맞을 때
       if (path.endsWith('pptx')) {
-        File file = File(result.files.single.path!);
-        final temp = path.split('.');
-        temp[temp.length - 2] += '-1';
-        temp.last = 'zip';
-        String newPath = temp.join('.');
-        print('newPath: $newPath');
-        final bytes = await file.readAsBytes();
-        // -1.zip 생성
-        File newFile = File(newPath);
-        newFile.writeAsBytesSync(bytes);
-        final newBytes = newFile.readAsBytesSync();
-        /* 여기까지 .pptx를 .zip으로 변경 */
+        final result = await _convertPptxToEdit(path);
 
-        final archive = ZipDecoder().decodeBytes(newBytes, verify: true);
-        final editedArchive = Archive();
-        for (var file in archive) {
-          // print(file.name);
-          if (file.name == 'ppt/presentation.xml') {
-            String result = utf8.decode(file.content);
-            print(result);
-            final document = XmlDocument.parse(result);
-            final el = document.findAllElements('p:modifyVerifier');
-
-            for (var element in el) {
-              element.remove();
-            }
-
-            final xml = document.toXmlString();
-            final xmlBytes = utf8.encode(xml);
-            final newXml = ArchiveFile('ppt/presentation.xml', xmlBytes.length, xmlBytes);
-            editedArchive.addFile(newXml);
-          } else {
-            editedArchive.addFile(file);
-          }
+        if (result) {
+          // 완료
+          _openDialog('완료', '닫기');
         }
-
-        final editedBytes = ZipEncoder().encode(editedArchive);
-        if (editedBytes != null) {
-          newFile.writeAsBytesSync(editedBytes);
-        }
-        temp.last = 'pptx';
-        newPath = temp.join('.');
-        newFile.renameSync(newPath);
-        // final presentation = archive.files.firstWhereOrNull((element) => element.name == 'ppt/presentation.xml');
-        // if (presentation != null) {
-        // await Isolate.spawn((message) {
-
-        // }, message)
-        // final content = utf8.decode(presentation.content as List<int>);
-        // final xml = XmlDocument.parse(content);
-        // final pModify = xml.findAllElements('p:modifyVerifier');
-
-        // for (var el in pModify) {
-        //   el.remove();
-        // }
-
-        // final editedArchive = Archive();
-        // for (var file in archive.files) {
-        //   if (file != presentation) {
-        //     editedArchive.addFile(file);
-        //   }
-        // }
-
-        // final editedContent = xml.toXmlString();
-        // final editedBytes = utf8.encode(editedContent);
-
-        // final editedPresentation = ArchiveFile('ppt/presentation.xml', editedBytes.length, editedBytes);
-
-        // archive.addFile(editedPresentation);
-        // final editedArchiveBytes = ZipEncoder().encode(archive);
-
-        // if (editedArchiveBytes != null) {
-        //   final editedFile = File(path);
-        //   await editedFile.writeAsBytes(editedArchiveBytes);
-        // }
-        // }
       }
       // 형식이 안 맞을 때
-      else {}
+      else {
+        _openDialog('잘못된 파일 입니다', '닫기');
+      }
     }
-    // 취소
-    else {}
   }
 
   @override
@@ -229,36 +221,18 @@ class _HomeState extends State<Home> {
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
             ),
-            ElevatedButton(
-                onPressed: _pickXmlFile,
-                child: const Text(
-                  'presentation.xml 파일 선택',
-                )),
+            // ElevatedButton(
+            //     onPressed: _pickXmlFile,
+            //     child: const Text(
+            //       'presentation.xml 파일 선택',
+            //     )),
             ElevatedButton(
                 onPressed: _pickPptxFile,
                 child: const Text(
                   'pptx 파일 선택',
                 )),
             DropTarget(
-                onDragDone: (details) {
-                  if (details.files.isNotEmpty) {
-                    final path = details.files.first.path;
-                    // 형식이 맞을 때
-                    if (path.endsWith('presentation.xml')) {
-                      final result = _convertXmlToEdit(path);
-                      if (result) {
-                        // 완료
-                        _openDialog('완료', '닫기');
-                      } else {
-                        _openDialog('저장에 실패했습니다', '닫기');
-                      }
-                    }
-                    // 형식이 안 맞을 때
-                    else {
-                      _openDialog('잘못된 파일 입니다', '닫기');
-                    }
-                  }
-                },
+                onDragDone: _onDragDropPptxFile,
                 onDragEntered: (details) {
                   setState(() {
                     isDragging = true;
@@ -288,7 +262,7 @@ class _HomeState extends State<Home> {
                           ),
                         ),
                         TextSpan(
-                          text: '\'presentation.xml\'',
+                          text: '\'PPTX\'',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
