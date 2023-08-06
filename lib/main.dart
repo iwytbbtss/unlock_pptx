@@ -23,7 +23,7 @@ class App extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const Home(title: 'UNLOCK PPTX'),
+      home: const Home(title: 'UNLOCK-PPTX'),
     );
   }
 }
@@ -78,6 +78,50 @@ class _HomeState extends State<Home> {
   //   }
   // }
 
+  // xml 파일 선택
+  // void _pickXmlFile() async {
+  //   FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+  //   if (result != null) {
+  //     final path = result.files.single.path!;
+  //     // 형식이 맞을 때
+  //     if (path.endsWith('presentation.xml')) {
+  //       final result = _convertXmlToEdit(path);
+
+  //       if (result) {
+  //         // 완료
+  //         _openDialog('완료', '닫기');
+  //       } else {
+  //         _openDialog('저장에 실패했습니다', '닫기');
+  //       }
+  //     }
+  //     // 형식이 안 맞을 때
+  //     else {
+  //       _openDialog('잘못된 파일 입니다', '닫기');
+  //     }
+  //   }
+  //   // 취소
+  //   else {}
+  // }
+
+  // path 받아서 처리
+  void _convertProcessByPath(String path) async {
+    // 형식이 맞을 때
+    if (path.endsWith('pptx')) {
+      final result = await _convertPptxToEdit(path);
+
+      if (result) {
+        // 완료
+        _openDialog('완료', '닫기');
+      }
+    }
+    // 형식이 안 맞을 때
+    else {
+      _openDialog('잘못된 파일 입니다', '닫기');
+    }
+  }
+
+  // TODO buffer 사용하는 방식으로 변경, zip 저장하지 않고 하는 방법, 로딩 인디게이터
   // pptx 파일 수정
   Future<bool> _convertPptxToEdit(String path) async {
     try {
@@ -135,70 +179,23 @@ class _HomeState extends State<Home> {
     }
   }
 
-  // xml 파일 선택
-  // void _pickXmlFile() async {
-  //   FilePickerResult? result = await FilePicker.platform.pickFiles();
-
-  //   if (result != null) {
-  //     final path = result.files.single.path!;
-  //     // 형식이 맞을 때
-  //     if (path.endsWith('presentation.xml')) {
-  //       final result = _convertXmlToEdit(path);
-
-  //       if (result) {
-  //         // 완료
-  //         _openDialog('완료', '닫기');
-  //       } else {
-  //         _openDialog('저장에 실패했습니다', '닫기');
-  //       }
-  //     }
-  //     // 형식이 안 맞을 때
-  //     else {
-  //       _openDialog('잘못된 파일 입니다', '닫기');
-  //     }
-  //   }
-  //   // 취소
-  //   else {}
-  // }
-
+  // 파일 선택
   void _pickPptxFile() async {
     FilePickerResult? pickedFiles = await FilePicker.platform.pickFiles();
 
     if (pickedFiles != null) {
       final path = pickedFiles.files.single.path!;
-      // 형식이 맞을 때
-      if (path.endsWith('pptx')) {
-        final result = await _convertPptxToEdit(path);
-
-        if (result) {
-          // 완료
-          _openDialog('완료', '닫기');
-        }
-      }
-      // 형식이 안 맞을 때
-      else {
-        _openDialog('잘못된 파일 입니다', '닫기');
-      }
+      // 처리
+      _convertProcessByPath(path);
     }
   }
 
   // pptx 드래그 앤 드랍
   void _onDragDropPptxFile(DropDoneDetails details) async {
-    if(details.files.isNotEmpty) {
+    if (details.files.isNotEmpty) {
       final path = details.files.first.path;
-      // 형식이 맞을 때
-      if (path.endsWith('pptx')) {
-        final result = await _convertPptxToEdit(path);
-
-        if (result) {
-          // 완료
-          _openDialog('완료', '닫기');
-        }
-      }
-      // 형식이 안 맞을 때
-      else {
-        _openDialog('잘못된 파일 입니다', '닫기');
-      }
+      // 처리
+      _convertProcessByPath(path);
     }
   }
 
@@ -214,13 +211,13 @@ class _HomeState extends State<Home> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(30),
-              child: Text(
-                'pptx만 넣으면 되게 지원 예정',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.all(30),
+            //   child: Text(
+            //     'pptx만 넣으면 되게 지원 예정',
+            //     style: Theme.of(context).textTheme.headlineMedium,
+            //   ),
+            // ),
             // ElevatedButton(
             //     onPressed: _pickXmlFile,
             //     child: const Text(
@@ -262,7 +259,7 @@ class _HomeState extends State<Home> {
                           ),
                         ),
                         TextSpan(
-                          text: '\'PPTX\'',
+                          text: '\'.pptx\'',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
